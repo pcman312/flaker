@@ -15,19 +15,20 @@ import (
 )
 
 var (
+	durationFlag = &cli.DurationFlag{
+		Name:    "d",
+		Aliases: []string{"duration"},
+		Usage: "How long to run the commands for. This is the minimum run time as this will wait " +
+			"until currently running commands finish before returning",
+		Required:    true,
+		DefaultText: "",
+	}
 	parallelFlag = &cli.IntFlag{
 		Name:        "p",
 		Aliases:     []string{"parallel"},
 		Usage:       "Number of concurrent runs of the command",
 		DefaultText: "1",
 		Value:       1,
-	}
-	durationFlag = &cli.DurationFlag{
-		Name:    "d",
-		Aliases: []string{"duration"},
-		Usage: "How long to run the commands for. This is the minimum run time as this will wait " +
-			"until currently running commands finish before returning",
-		Required: true,
 	}
 	refreshFlag = &cli.DurationFlag{
 		Name:        "r",
@@ -36,16 +37,16 @@ var (
 		DefaultText: "1s",
 		Value:       1 * time.Second,
 	}
+	resultsFileFlag = &cli.StringFlag{
+		Name:    "o",
+		Aliases: []string{"output_file"},
+		Usage:   "File to write results to in JSON format",
+	}
 	rootCmdFlag = &cli.StringSliceFlag{
 		Name:        "root_command",
 		Usage:       "Specifies the underlying root command to use to enable piping and redirection",
 		Value:       cli.NewStringSlice("bash", "-c"),
 		DefaultText: "bash -c",
-	}
-	resultsFileFlag = &cli.StringFlag{
-		Name:    "o",
-		Aliases: []string{"output_file"},
-		Usage:   "File to write results to in JSON format",
 	}
 )
 
@@ -57,8 +58,8 @@ func Run(args []string) (code int) {
 		Version:   "0.0.2",
 		Commands:  nil,
 		Flags: []cli.Flag{
-			parallelFlag,
 			durationFlag,
+			parallelFlag,
 			refreshFlag,
 			resultsFileFlag,
 			rootCmdFlag,
