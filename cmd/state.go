@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"sync"
+
+	"github.com/pcman312/flaker/cmd/types"
 )
 
 type runState struct {
@@ -18,7 +20,7 @@ type status struct {
 	computeTime int64
 }
 
-func newRunState() *runState {
+func newRunStats() *runState {
 	s := &runState{
 		mu: &sync.RWMutex{},
 	}
@@ -41,7 +43,7 @@ func (s *runState) status() status {
 	return snap
 }
 
-func (s *runState) record(output results) {
+func (s *runState) Record(output types.Results) {
 	s.mu.Lock()
 	if output.Code != 1 {
 		s.successful++

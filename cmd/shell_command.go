@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/pcman312/flaker/cmd/types"
 )
 
 type shellCommand struct {
@@ -43,9 +45,9 @@ func hasSpace(str string) bool {
 	return false
 }
 
-func (c shellCommand) run() (out results) {
+func (c shellCommand) run() (out types.Results) {
 	if c.isZero() {
-		out = results{
+		out = types.Results{
 			Err: fmt.Errorf("missing command"),
 		}
 		return out
@@ -62,12 +64,12 @@ func (c shellCommand) run() (out results) {
 
 	err := cmd.Run()
 
-	out = results{
+	out = types.Results{
 		StdOut:   stdout.String(),
 		StdErr:   stderr.String(),
 		Code:     getExitCode(err),
 		Err:      err,
-		Duration: jsonDuration(time.Now().Sub(start)),
+		Duration: types.JSONDuration(time.Now().Sub(start)),
 	}
 	return out
 }

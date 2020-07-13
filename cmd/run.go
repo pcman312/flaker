@@ -10,6 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pcman312/flaker/cmd/results"
+	"github.com/pcman312/flaker/cmd/types"
+
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 )
@@ -48,6 +51,10 @@ var (
 		Value:       cli.NewStringSlice("bash", "-c"),
 		DefaultText: "bash -c",
 	}
+	stopOnFailure = &cli.BoolFlag{
+		Name:  "stop_on_failure",
+		Usage: "Stops executions if any executions fail",
+	}
 )
 
 func Run(args []string) (code int) {
@@ -55,7 +62,7 @@ func Run(args []string) (code int) {
 		Name:      "flaker",
 		Usage:     "Repeatedly run a command (usually a test) to check for flakiness",
 		UsageText: "flaker [options] -- [command]",
-		Version:   "0.0.2",
+		Version:   "0.0.3",
 		Commands:  nil,
 		Flags: []cli.Flag{
 			durationFlag,
@@ -63,6 +70,7 @@ func Run(args []string) (code int) {
 			refreshFlag,
 			resultsFileFlag,
 			rootCmdFlag,
+			stopOnFailure,
 		},
 		Action: run,
 	}
@@ -100,12 +108,12 @@ func run(flagCtx *cli.Context) error {
 
 	startables := []starter{}
 
-	results := make(chan results, numRoutines)
+	resultsChan := make(chan types.Results, numRoutines)
 
 	// Set up processing
 	runners := []runner{}
 	for i := 0; i < numRoutines; i++ {
-		runner, err := newRunner(shCmd, results)
+		runner, err := newRunner(shCmd, resultsChan)
 		if err != nil {
 			return fmt.Errorf("unable to create runner: %w", err)
 		}
@@ -113,7 +121,18 @@ func run(flagCtx *cli.Context) error {
 		startables = append(startables, runner)
 	}
 
-	status := newRunState()
+	var stopFunc func()
+	failed := false
+
+	if flagCtx.Bool(stopOnFailure.Name) {
+		stopFunc = func() {
+			cancel()
+			stop(runners...)
+			failed = true
+		}
+	}
+
+	stats := newRunStats()
 
 	var resultsWriter io.Writer
 	resultsFolder := flagCtx.String(resultsFileFlag.Name)
@@ -129,13 +148,18 @@ func run(flagCtx *cli.Context) error {
 		resultsWriter = f
 	}
 
-	rl, err := newResultsListener(results, status, resultsWriter)
+	rl, err := results.NewListener(
+		results.ResultsChan(resultsChan),
+		results.Stats(stats),
+		results.Writer(resultsWriter),
+		results.StopOnFailure(stopFunc),
+	)
 	if err != nil {
 		return fmt.Errorf("unable to create results listener: %w", err)
 	}
 	startables = append(startables, rl)
 
-	reporter, err := newReporter(status, refreshRate)
+	reporter, err := newReporter(stats, refreshRate)
 	if err != nil {
 		return fmt.Errorf("unable to create reporter: %w", err)
 	}
@@ -150,6 +174,9 @@ func run(flagCtx *cli.Context) error {
 	rl.Close()
 	reporter.Close()
 
+	if failed {
+		return fmt.Errorf("command failed")
+	}
 	return nil
 }
 

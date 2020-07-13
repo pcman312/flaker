@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pcman312/flaker/cmd/types"
+
 	"github.com/vrecan/life"
 )
 
@@ -14,10 +16,10 @@ type runner struct {
 	ctx context.Context
 
 	shCmd   shellCommand
-	results chan results
+	results chan types.Results
 }
 
-func newRunner(shCmd shellCommand, results chan results) (runner, error) {
+func newRunner(shCmd shellCommand, results chan types.Results) (runner, error) {
 	if results == nil {
 		return runner{}, fmt.Errorf("results channel is nil")
 	}
